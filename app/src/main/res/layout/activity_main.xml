@@ -1,0 +1,156 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Battery Information"
+            android:id="@+id/batteryPanelTitle"
+            android:textSize="12pt"
+            android:textIsSelectable="true"
+            android:paddingBottom="10px" />
+
+        <GridLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:rowCount="3"
+            android:paddingBottom="30px">
+
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Battery level: "
+                android:id="@+id/batteryLevelTitle"
+                android:paddingBottom="5px" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:id="@+id/batteryLevelValue"
+                android:paddingBottom="5px" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Battery temp: "
+                android:id="@+id/batteryTempTitle"
+                android:paddingBottom="5px" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:id="@+id/batteryTempValue"
+                android:paddingBottom="5px" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Battery voltage: "
+                android:id="@+id/batteryVoltageTitle"
+                android:paddingBottom="5px" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:id="@+id/batteryVoltageValue"
+                android:paddingBottom="5px" />
+
+        </GridLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="Test Selection"
+            android:id="@+id/testPanelTitle"
+            android:textSize="12pt"
+            android:paddingBottom="20px" />
+
+        <Spinner
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:spinnerMode="dropdown"
+            android:entries="@array/tests"
+            android:paddingLeft="5px"
+            android:paddingRight="5px"
+            android:paddingBottom="25px"
+            android:paddingTop="25px"
+            android:background="#222222"
+            android:id="@+id/testSelection" />
+
+        <GridLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:rowCount="1"
+            android:id="@+id/testDurationLayout"
+            android:layout_marginTop="20px"
+            android:paddingBottom="30px">
+            <![CDATA[>
+
+            ]]>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Test duration (sec): "
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:id="@+id/testDurationTitle"
+                android:paddingBottom="5px" />
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:ems="10"
+                android:id="@+id/testDurationInput" />
+        </GridLayout>
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text=""
+            android:layout_marginBottom="20px"
+            android:layout_marginTop="20px"
+            android:id="@+id/testTimeRemaining" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Start Test"
+            android:id="@+id/btnStart"
+            android:paddingTop="20px"
+            android:onClick="onClickBtnStart" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Stop Test"
+            android:id="@+id/btnStop"
+            android:paddingTop="20px"
+            android:onClick="onClickBtnStop" />
+
+    </LinearLayout>
+
+
+</RelativeLayout>
