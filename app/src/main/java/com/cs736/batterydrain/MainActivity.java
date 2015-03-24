@@ -25,15 +25,20 @@ import java.util.Random;
 public class MainActivity extends Activity {
 
     // Layout widgets
+    public Button btnReset;
     public Button btnStart;
     public Button btnStop;
     public EditText testDurationInput;
-    public GridLayout testDurationLayout;
+    public GridLayout testSetupLayout;
+    public GridLayout testResultsLayout;
     public Spinner spnTestSelection;
     public TextView batteryLevelValue;
     public TextView batteryTempValue;
     public TextView batteryVoltageValue;
-    public TextView testTimeRemaining;
+    public TextView testTimeRemainingValue;
+    public TextView testBatteryLevelDrainValue;
+    public TextView testBatteryTempIncreaseValue;
+    public TextView testBatteryVoltageDrainValue;
 
     // Test threads
     public Thread test1Thread;
@@ -95,14 +100,9 @@ public class MainActivity extends Activity {
         batteryTempValue = (TextView) findViewById(R.id.batteryTempValue);
         batteryVoltageValue = (TextView) findViewById(R.id.batteryVoltageValue);
 
-        batteryLevelValue.setText(BatteryManager.EXTRA_LEVEL);
-        batteryTempValue.setText("?");
-        batteryVoltageValue.setText("?");
-
         // Setup the battery status receiver
         batteryStatusReceiver = new BatteryStatusReceiver();
         batteryStatusReceiver.setMainActivityHandler(this);
-
         IntentFilter callInterceptorIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         registerReceiver(batteryStatusReceiver,  callInterceptorIntentFilter);
     }
@@ -116,10 +116,6 @@ public class MainActivity extends Activity {
             int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
             float temp = (float)intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) / 10;
             float voltage = (float)intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) / 1000;
-
-            Log.d("BatteryActivity", "Battery level: " + level + "%");
-            Log.d("BatteryActivity", "Battery temp: " + temp + "C");
-            Log.d("BatteryActivity", "Battery voltage: " + voltage + "V");
 
             main.updateBatteryPanel(level, temp, voltage);
         }
@@ -135,24 +131,30 @@ public class MainActivity extends Activity {
     Initialize the test panel at the bottom
      */
     public void setupTestPanel() {
+        btnReset = (Button) findViewById(R.id.btnReset);
         btnStart = (Button) findViewById(R.id.btnStart);
         btnStop = (Button) findViewById(R.id.btnStop);
-        testDurationLayout = (GridLayout) findViewById(R.id.testDurationLayout);
         testDurationInput = (EditText) findViewById(R.id.testDurationInput);
-        testTimeRemaining = (TextView) findViewById(R.id.testTimeRemaining);
+        testTimeRemainingValue = (TextView) findViewById(R.id.testTimeRemainingValue);
+        testBatteryLevelDrainValue = (TextView) findViewById(R.id.testBatteryLevelDrainValue);
+        testBatteryTempIncreaseValue = (TextView) findViewById(R.id.testBatteryTempIncreaseValue);
+        testBatteryVoltageDrainValue = (TextView) findViewById(R.id.testBatteryVoltageDrainValue);
+        testResultsLayout = (GridLayout) findViewById(R.id.testResultsLayout);
+        testSetupLayout = (GridLayout) findViewById(R.id.testSetupLayout);
 
+        btnReset.setEnabled(false);
         btnStop.setEnabled(false);
         testDurationInput.setText("15");
-        testTimeRemaining.setVisibility(View.GONE);
+        testResultsLayout.setVisibility(View.GONE);
     }
 
     /*
     Reset layout elements in the test panel (typically called after completing a test)
      */
     public void resetTestPanel() {
-        testDurationLayout.setVisibility(View.VISIBLE);
-        testTimeRemaining.setVisibility(View.GONE);
-        spnTestSelection.setEnabled(true);
+        testSetupLayout.setVisibility(View.VISIBLE);
+        testResultsLayout.setVisibility(View.GONE);
+        btnReset.setEnabled(false);
         btnStart.setEnabled(true);
         btnStop.setEnabled(false);
     }
@@ -246,34 +248,42 @@ public class MainActivity extends Activity {
     Event handler for the start test button
      */
     public void onClickBtnStart(View v) {
-
+        Log.d("MainActivity", "onClickBtnStart called");
         // Adjust some layout elements
         btnStart.setEnabled(false);
         btnStop.setEnabled(true);
-        spnTestSelection.setEnabled(false);
-        testTimeRemaining.setVisibility(View.VISIBLE);
-        testDurationLayout.setVisibility(View.GONE);
+        testSetupLayout.setVisibility(View.GONE);
+        testResultsLayout.setVisibility(View.VISIBLE);
 
+        // Measure start values of power elements
+        final int startBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
+        final float startBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
+        final float startBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
+        Log.d("MainActivity", "onClickBtnStart, starting the countdown timer");
         // Start the CountdownTimer object.
-        int testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
+        final int testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
         new CountDownTimer(testDuration, 1000) {
             public void onTick(long millisUntilFinished) {
                 int minutesRemaining = ((int)millisUntilFinished / 1000) / 60;
                 int secondsRemaining = ((int)millisUntilFinished / 1000) % 60;
-                testTimeRemaining.setText("Time remaining: " + String.format("%02d", minutesRemaining) + ":" + String.format("%02d", secondsRemaining));
+                testTimeRemainingValue.setText(String.format("%02d", minutesRemaining) + ":" + String.format("%02d", secondsRemaining));
+
+                // How do I read into the parent function and figure out how much battery % has drained since test started?
+                testBatteryLevelDrainValue.setText(startBatteryLevel - (Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""))) + "%");
+                testBatteryTempIncreaseValue.setText(String.format("%s", (Float.valueOf(batteryTempValue.getText().toString().replace("C", "")) - startBatteryTemp) + "C"));
+                testBatteryVoltageDrainValue.setText((startBatteryVoltage - (Float.valueOf(batteryVoltageValue.getText().toString().replace("V", "")))) + "V");
             }
             public void onFinish() {
                 // Stop the running thread
-                switch(spnTestSelection.getSelectedItem().toString()) {
-                    case "Test 1": test1Thread.interrupt(); break;
-                    case "Test 2": test2Thread.interrupt(); break;
-                    case "Test 3": test3Thread.interrupt(); break;
-                    case "Test 4": test4Thread.interrupt(); break;
-                }
-                resetTestPanel();
+                stopActiveThread();
+
+                // Reset layout elements
+                btnStop.setEnabled(false);
+                btnReset.setEnabled(true);
+                testTimeRemainingValue.setText("00:00");
             }
         }.start();
-
+        Log.d("MainActivity", "onClickBtnStart, starting the thread");
         // Start the selected thread!
         switch(spnTestSelection.getSelectedItem().toString()) {
             case "Test 1": test1Thread.start(); break;
@@ -281,20 +291,32 @@ public class MainActivity extends Activity {
             case "Test 3": test3Thread.start(); break;
             case "Test 4": test4Thread.start(); break;
         }
-
     }
 
-    /*
-    Event handler for the stop test button
-     */
-    public void onClickBtnStop(View v) {
-        // Stop the running thread
+    public void stopActiveThread() {
         switch(spnTestSelection.getSelectedItem().toString()) {
             case "Test 1": test1Thread.interrupt(); break;
             case "Test 2": test2Thread.interrupt(); break;
             case "Test 3": test3Thread.interrupt(); break;
             case "Test 4": test4Thread.interrupt(); break;
         }
+
+        // Re-initialize the threads so we can run them again
+        setupTestThreads();
+    }
+
+    /*
+    Event handler for the stop test button
+     */
+    public void onClickBtnStop(View v) {
+        stopActiveThread();
+        resetTestPanel();
+    }
+
+    /*
+    Event handler for the reset button
+     */
+    public void onClickBtnReset(View v) {
         resetTestPanel();
     }
 }

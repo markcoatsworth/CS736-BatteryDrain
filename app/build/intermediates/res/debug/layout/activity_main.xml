@@ -74,38 +74,38 @@
 
         </GridLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text="Test Selection"
-            android:id="@+id/testPanelTitle"
-            android:textSize="12pt"
-            android:paddingBottom="20px" />
+    <GridLayout
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/testSetupLayout"
+        android:columnCount="2"
+        android:rowCount="3"
+        android:paddingBottom="50px">
 
-        <Spinner
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:spinnerMode="dropdown"
-            android:entries="@array/tests"
-            android:paddingLeft="5px"
-            android:paddingRight="5px"
-            android:paddingBottom="25px"
-            android:paddingTop="25px"
-            android:background="#222222"
-            android:id="@+id/testSelection" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="2"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:text="Test Selection"
+                android:id="@+id/testPanelTitle"
+                android:textSize="12pt"
+                android:paddingBottom="20px" />
 
-        <GridLayout
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:columnCount="2"
-            android:rowCount="1"
-            android:id="@+id/testDurationLayout"
-            android:layout_marginTop="20px"
-            android:paddingBottom="30px">
-            <![CDATA[>
-
-            ]]>
+            <Spinner
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_columnSpan="2"
+                android:spinnerMode="dropdown"
+                android:entries="@array/tests"
+                android:paddingLeft="5px"
+                android:paddingRight="5px"
+                android:paddingBottom="25px"
+                android:paddingTop="25px"
+                android:background="#222222"
+                android:id="@+id/testSelection"
+                android:layout_marginBottom="20px" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -122,17 +122,95 @@
                 android:textAppearance="?android:attr/textAppearanceMedium"
                 android:ems="10"
                 android:id="@+id/testDurationInput" />
+
         </GridLayout>
 
-
-        <TextView
-            android:layout_width="wrap_content"
+        <GridLayout
+            android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text=""
-            android:layout_marginBottom="20px"
-            android:layout_marginTop="20px"
-            android:id="@+id/testTimeRemaining" />
+            android:id="@+id/testResultsLayout"
+            android:columnCount="2"
+            android:rowCount="5"
+            android:layout_marginBottom="60px">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="20px"
+                android:paddingRight="10px"
+                android:layout_columnSpan="2"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="12pt"
+                android:text="Test Results"
+                android:id="@+id/testResultsTitle"
+                android:singleLine="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+
+                android:text="Time remaining:"
+                android:id="@+id/testTimeRemainingTitle" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:text=""
+                android:id="@+id/testTimeRemainingValue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+                android:text="Battery level drain:"
+                android:id="@+id/testBatteryLevelDrainTitle" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+                android:text=""
+                android:id="@+id/testBatteryLevelDrainValue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+                android:text="Battery temp increase:"
+                android:id="@+id/testBatteryTempIncreaseTitle" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+                android:text=""
+                android:id="@+id/testBatteryTempIncreaseValue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+                android:text="Battery voltage drain:"
+                android:id="@+id/testBatteryVoltageDrainTitle" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="5px"
+                android:paddingRight="10px"
+                android:text=""
+                android:id="@+id/testBatteryVoltageDrainValue" />
+
+
+        </GridLayout>
 
         <Button
             android:layout_width="match_parent"
@@ -149,6 +227,14 @@
             android:id="@+id/btnStop"
             android:paddingTop="20px"
             android:onClick="onClickBtnStop" />
+
+        <Button
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="Reset"
+            android:paddingTop="20px"
+            android:id="@+id/btnReset"
+            android:onClick="onClickBtnReset" />
 
     </LinearLayout>
 
