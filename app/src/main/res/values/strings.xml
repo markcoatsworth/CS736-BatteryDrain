@@ -5,9 +5,9 @@
     <string name="action_settings">Settings</string>
 
     <string-array name="tests">
-        <item>Test 1</item>
-        <item>Test 2</item>
-        <item>Test 3</item>
-        <item>Test 4</item>
+        <item>Full throttle + full permissions</item>
+        <item>Full throttle + no permissions</item>
+        <item>No detection + full permissions</item>
+        <item>No detection + no permissions</item>
     </string-array>
 </resources>

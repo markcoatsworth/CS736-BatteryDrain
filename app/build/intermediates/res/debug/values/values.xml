@@ -3,10 +3,10 @@
     <!-- From: file:/Users/mark/AndroidStudioProjects/CS736BatteryDrain/app/src/main/res/values/strings.xml -->
     <eat-comment/>
     <string-array name="tests">
-        <item>Test 1</item>
-        <item>Test 2</item>
-        <item>Test 3</item>
-        <item>Test 4</item>
+        <item>Full throttle + full permissions</item>
+        <item>Full throttle + no permissions</item>
+        <item>No detection + full permissions</item>
+        <item>No detection + no permissions</item>
     </string-array>
     <!-- From: file:/Users/mark/AndroidStudioProjects/CS736BatteryDrain/app/build/intermediates/exploded-aar/com.android.support/appcompat-v7/22.0.0/res/values/values.xml -->
     <eat-comment/>
