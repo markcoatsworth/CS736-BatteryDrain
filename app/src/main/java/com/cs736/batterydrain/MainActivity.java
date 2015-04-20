@@ -1,36 +1,28 @@
 package com.cs736.batterydrain;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.*;
 import android.bluetooth.*;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.*;
+import android.content.pm.PackageManager;
+import android.location.*;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.*;
-import android.os.PowerManager.WakeLock;
+import android.os.PowerManager.*;
+import android.os.Process;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.GridLayout;
-import android.widget.Spinner;
-import android.widget.TextView;
+import android.view.*;
+import android.widget.*;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.Scanner;
-
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.HttpResponse;
+import java.util.*;
 
 public class MainActivity extends Activity {
+
+    // Application context
+    public Context mainContext;
 
     // Layout widgets
     public Button btnReset;
@@ -57,6 +49,7 @@ public class MainActivity extends Activity {
 
     // Manager, peripherals, etc.
     BluetoothAdapter btAdapter;
+    int testDuration;
     PowerManager powerManager;
     WakeLock partialWakeLock;
 
@@ -86,6 +79,7 @@ public class MainActivity extends Activity {
 
         // Initialize wakelocks, peripherals, adapters, etc.
         btAdapter = BluetoothAdapter.getDefaultAdapter();
+        mainContext = getApplicationContext();
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
 
         // Keep the screen on, no matter what!
@@ -190,7 +184,7 @@ public class MainActivity extends Activity {
         // Test 1 is full-throttle, full-permission battery drain
         test1Thread = new Thread(new Runnable() {
             public void run() {
-                /*
+
                 // Grab high thread priority
                 android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
 
@@ -240,7 +234,7 @@ public class MainActivity extends Activity {
                 // Looks like the thread got interrupted. Shut down things that need to be shut down.
                 phoneVibrate.cancel();
                 return;
-                */
+
             }
         });
 
@@ -272,19 +266,94 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Test 3 assumes full permissions, but tries to make other processes do all the battery draining work
+        // There should be minimal CPU usage within this actual thread.
         test3Thread = new Thread(new Runnable() {
+
             public void run() {
-                //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
-                while(!Thread.interrupted()) {
-                    try {
-                        Log.d("test3Thread", "Test 3 running!");
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        // We've been interrupted: no more messages.
-                        return;
+
+                // Grab high thread priority
+                //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
+
+                // Grab a partial wakelock
+                partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag");
+                partialWakeLock.acquire();
+
+                // Set screen to maximum brightness
+                WindowManager.LayoutParams layout = getWindow().getAttributes();
+                layout.screenBrightness = 1F;
+                getWindow().setAttributes(layout);
+
+                // Run a Wifi scanner. At the end of every scan, start a new scan
+                /*
+                final WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+                class WifiReceiver extends BroadcastReceiver {
+                    public void onReceive(Context c, Intent intent) {
+                        if(!Thread.interrupted()) {
+                            Log.d("test3Thread", "Received wifi results, starting a new wifi scan");
+                            wifiManager.startScan();
+                        }
                     }
                 }
+                WifiReceiver receiverWifi = new WifiReceiver();
+                registerReceiver(receiverWifi, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+                wifiManager.startScan();
+                */
+
+                // Run a Bluetooth scanner
+                btAdapter.startDiscovery();
+
+                // Check Bluetooth discovery, make sure it restarts as often as possible
+                while (!Thread.interrupted()) {
+                    if(!btAdapter.isDiscovering()) {
+                        Log.d("test3Thread", "Restarting Bluetooth discovery");
+                        btAdapter.startDiscovery();
+                        try {
+                            Thread.sleep(500);
+                        }
+                        catch(Exception ex) {
+
+                        }
+                    }
+                }
+
+
             }
+
+            /*
+            public void run() {
+                //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+                String applicationName = "com.inkle.eightydays";
+                openApplication(mainContext, applicationName);
+
+                try {
+                    Thread.sleep(2000);
+                }
+                catch(Exception ex) {
+                    // do nothing;
+                }
+
+                ActivityManager am = (ActivityManager)mainContext.getSystemService(Context.ACTIVITY_SERVICE);
+                List<ActivityManager.RunningAppProcessInfo> pids = am.getRunningAppProcesses();
+                int processId = 0;
+                Log.d("test3Thread", "My process pid=" + Process.myPid() + ", uid=" + Process.myUid());
+                for(int i = 0; i < pids.size(); i++)
+                {
+                    Log.d("test3Thread", "i=" + i + ", processName=" + pids.get(i).processName + ", pid=" + pids.get(i).pid + ", uid=" + pids.get(i).uid);
+                    ActivityManager.RunningAppProcessInfo info = pids.get(i);
+                    if(pids.get(i).processName.toString().equals(applicationName))
+                    {
+                        Log.d("test3Thread", "Killing process name=" + pids.get(i).processName + ", id=" + pids.get(i).pid + ", uid=" + pids.get(i).uid);
+
+                        Process.killProcess(pids.get(i).pid);
+                        am.killBackgroundProcesses(applicationName);
+
+                    }
+
+                }
+
+            }
+            */
         });
 
         test4Thread = new Thread(new Runnable() {
@@ -331,7 +400,7 @@ public class MainActivity extends Activity {
         final float startBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
 
         // Start the CountdownTimer object.
-        final int testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
+        testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
         new CountDownTimer(testDuration, 1000) {
             public void onTick(long millisUntilFinished) {
                 int minutesRemaining = ((int)millisUntilFinished / 1000) / 60;
@@ -353,8 +422,16 @@ public class MainActivity extends Activity {
                 btnReset.setEnabled(true);
                 testTimeRemainingValue.setText("00:00");
 
-                // Release the wakelock
-                partialWakeLock.release();
+                // Release the wakelock if held
+                if(partialWakeLock != null) {
+                    partialWakeLock.release();
+                }
+
+                // Output the results to file
+                int endBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
+                float endBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
+                float endBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
+                outputResultsToFile(spnTestSelection.getSelectedItem().toString(), (testDuration/1000), startBatteryLevel, startBatteryTemp, startBatteryVoltage, endBatteryLevel, endBatteryTemp, endBatteryVoltage);
 
                 // Vibrate the phone five times
                 for(int i = 1; i <= 5; i ++)
@@ -370,7 +447,7 @@ public class MainActivity extends Activity {
             }
         }.start();
 
-        Log.d("MainActivity", "onClickBtnStart, starting the thread");
+        //Log.d("MainActivity", "onClickBtnStart, starting the thread");
         // Start the selected thread!
         switch(spnTestSelection.getSelectedItem().toString()) {
             case "Full throttle + full permissions": test1Thread.start(); break;
@@ -423,6 +500,11 @@ public class MainActivity extends Activity {
     public void onClickBtnStop(View v) {
         stopActiveThread();
         resetTestPanel();
+
+        // Release the wakelock if held
+        if(partialWakeLock != null) {
+            partialWakeLock.release();
+        }
     }
 
     /*
@@ -433,6 +515,64 @@ public class MainActivity extends Activity {
         resetTestPanel();
     }
 
+
+    /*
+    Utility function, outputs test results data to a file in the /Download folder.
+     */
+    public void outputResultsToFile(String testName, int testDuration, int startLevel, float startTemp, float startVoltage, int endLevel, float endTemp, float endVoltage)
+    {
+        File resultsFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download", "CS736BatteryDrain-Results.csv");
+        String thisResult = "";
+
+        if(!resultsFile.exists())
+        {
+            thisResult = "Test Name;Test Duration;Start Level (%);Start Temp (C);Start Voltage (V);End Level (%);End Temp (C);End Voltage (V)\n";
+        }
+
+
+        thisResult += testName + ";" + testDuration + ";" + startLevel + ";" + startTemp + ";" + startVoltage + ";" + endLevel + ";" + endTemp + ";" + endVoltage + "\n";
+        OutputStream out = null;
+        try {
+            out = new BufferedOutputStream(new FileOutputStream(resultsFile, true));
+            out.write(thisResult.getBytes());
+            out.close();
+        }
+        catch(IOException ex) {
+
+        }
+    }
+
+    /** Open another app.
+     * Stolen from: http://stackoverflow.com/questions/2780102/open-another-application-from-your-own-intent/7596063#7596063
+     * @param context current Context, like Activity, App, or Service
+     * @param packageName the full package name of the app to open
+     * @return true if likely successful, false if unsuccessful
+     */
+    public static boolean openApplication(Context context, String packageName) {
+        PackageManager manager = context.getPackageManager();
+        try {
+            Intent i = manager.getLaunchIntentForPackage(packageName);
+            if (i == null) {
+                return false;
+                //throw new PackageManager.NameNotFoundException();
+            }
+            i.addCategory(Intent.CATEGORY_LAUNCHER);
+            i.putExtra("uid", Process.myUid());
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Log.d("test1Thread", "Starting " + packageName + " with uid=" + Process.myUid());
+            context.startActivity(i);
+
+
+
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    /*
+    Utility function, reads in the frequency from cpu0. Used to measure CPU frequency switching.
+     */
     int getCpu0Frequency()
     {
         int frequency = -1;
