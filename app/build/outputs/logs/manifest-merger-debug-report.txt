@@ -81,6 +81,10 @@ category#android.intent.category.LAUNCHER
 ADDED from AndroidManifest.xml:29:17
 	android:name
 		ADDED from AndroidManifest.xml:29:27
+receiver#com.cs736.batterydrain.MainActivity$AlarmReceiver
+ADDED from AndroidManifest.xml:32:9
+	android:name
+		ADDED from AndroidManifest.xml:32:19
 uses-sdk
 INJECTED from AndroidManifest.xml:0:0 reason: use-sdk injection requested
 MERGED from com.android.support:appcompat-v7:22.0.0:20:5

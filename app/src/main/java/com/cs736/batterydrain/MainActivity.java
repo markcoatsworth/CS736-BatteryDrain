@@ -15,6 +15,8 @@ import android.os.Process;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 
 import java.io.*;
 import java.text.*;
@@ -55,6 +57,10 @@ public class MainActivity extends Activity {
     int testDuration;
     PowerManager powerManager;
     WakeLock partialWakeLock;
+
+    int startBatteryLevel = 0;
+    float startBatteryTemp = 0;
+    float startBatteryVoltage = 0;
 
     // Action handlers
     private BatteryStatusReceiver batteryStatusReceiver = null;
@@ -227,7 +233,6 @@ public class MainActivity extends Activity {
         });
     }
 
-
     /*
     Update the battery information panel. This gets called from the BatteryStatusReceiver class.
      */
@@ -236,6 +241,39 @@ public class MainActivity extends Activity {
         batteryLevelValue.setText(level + "%");
         batteryTempValue.setText(String.format("%s", temp) + "C");
         batteryVoltageValue.setText(String.format("%s", voltage) + "V");
+    }
+
+    public void alarmCalled(){
+        // Stop the running thread
+        stopActiveThread();
+
+        // Reset layout elements
+        btnStop.setEnabled(false);
+        btnReset.setEnabled(true);
+        testTimeRemainingValue.setText("00:00");
+
+        // Release the wakelock if held
+        if(partialWakeLock != null) {
+            partialWakeLock.release();
+        }
+
+        // Output the results to file
+        int endBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
+        float endBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
+        float endBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
+        outputResultsToFile(spnTestSelection.getSelectedItem().toString(), (testDuration/1000), startBatteryLevel, startBatteryTemp, startBatteryVoltage, endBatteryLevel, endBatteryTemp, endBatteryVoltage);
+
+        // Vibrate the phone five times
+        for(int i = 1; i <= 5; i ++)
+        {
+            phoneVibrate.vibrate(500);
+            try {
+                Thread.sleep(1000);
+            }
+            catch(InterruptedException ex) {
+                // do nothing
+            }
+        }
     }
 
     /*
@@ -250,62 +288,15 @@ public class MainActivity extends Activity {
         testResultsLayout.setVisibility(View.VISIBLE);
 
         // Measure start values of power elements
-        final int startBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
-        final float startBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
-        final float startBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
+        startBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
+        startBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
+        startBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
 
         // Start the CountdownTimer object.
         testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
-        //new CountDownTimer(testDuration, 1000) {
-        new CountDownTimer(testDuration, testDuration) {
-            public void onTick(long millisUntilFinished) {
 
-                // Do not update the UI during testing! This will trigger an alarm that keeps the CPU awake.
-                /*
-                int minutesRemaining = ((int)millisUntilFinished / 1000) / 60;
-                int secondsRemaining = ((int)millisUntilFinished / 1000) % 60;
-                testTimeRemainingValue.setText(String.format("%02d", minutesRemaining) + ":" + String.format("%02d", secondsRemaining));
-
-                // How do I read into the parent function and figure out how much battery % has drained since test started?
-                testBatteryLevelDrainValue.setText(startBatteryLevel - (Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""))) + "%");
-                testBatteryTempIncreaseValue.setText(String.format("%s", (Float.valueOf(batteryTempValue.getText().toString().replace("C", "")) - startBatteryTemp) + "C"));
-                testBatteryVoltageDrainValue.setText((startBatteryVoltage - (Float.valueOf(batteryVoltageValue.getText().toString().replace("V", "")))) + "V");
-                */
-            }
-            public void onFinish() {
-
-                // Stop the running thread
-                stopActiveThread();
-
-                // Reset layout elements
-                btnStop.setEnabled(false);
-                btnReset.setEnabled(true);
-                testTimeRemainingValue.setText("00:00");
-
-                // Release the wakelock if held
-                if(partialWakeLock != null) {
-                    partialWakeLock.release();
-                }
-
-                // Output the results to file
-                int endBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
-                float endBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
-                float endBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
-                outputResultsToFile(spnTestSelection.getSelectedItem().toString(), (testDuration/1000), startBatteryLevel, startBatteryTemp, startBatteryVoltage, endBatteryLevel, endBatteryTemp, endBatteryVoltage);
-
-                // Vibrate the phone five times
-                for(int i = 1; i <= 5; i ++)
-                {
-                    phoneVibrate.vibrate(500);
-                    try {
-                        Thread.sleep(1000);
-                    }
-                    catch(InterruptedException ex) {
-                        // do nothing
-                    }
-                }
-            }
-        }.start();
+        //schedule alarm here!
+        createAlarm(testDuration);
 
         //Log.d("MainActivity", "onClickBtnStart, starting the thread");
         // Start the selected thread!
@@ -317,6 +308,26 @@ public class MainActivity extends Activity {
             case "Real world workload + Malicious workload + Alarm/Wakelock": test5Thread.start(); break;
             case "Full throttle (upper bound)": test6Thread.start(); break;
         }
+    }
+
+    BroadcastReceiver alarmReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            unregisterReceiver(alarmReceiver);
+            alarmCalled();
+        }
+    };
+
+    public static final String ACTION_NAME = "com.helloword.MYACTION";
+    private IntentFilter myFilter = new IntentFilter(ACTION_NAME);
+
+    private void createAlarm(int millis){
+
+        registerReceiver(alarmReceiver, myFilter);
+        Intent intent = new Intent(ACTION_NAME);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_ONE_SHOT);
+        AlarmManager alarmManager = (AlarmManager)getSystemService(ALARM_SERVICE);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + millis, pendingIntent);
     }
 
     public void stopActiveThread() {
