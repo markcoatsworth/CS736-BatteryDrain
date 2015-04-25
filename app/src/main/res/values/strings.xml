@@ -5,9 +5,11 @@
     <string name="action_settings">Settings</string>
 
     <string-array name="tests">
-        <item>Full throttle + full permissions</item>
-        <item>Full throttle + no permissions</item>
-        <item>No detection + full permissions</item>
-        <item>No detection + no permissions</item>
+        <item>Idle (lower bound)</item>
+        <item>Real world workload</item>
+        <item>Real world workload + Alarm</item>
+        <item>Real world workload + Wakelock</item>
+        <item>Real world workload + Malicious workload + Alarm/Wakelock</item>
+        <item>Full throttle (upper bound)</item>
     </string-array>
 </resources>

@@ -3,10 +3,12 @@
     <!-- From: file:/Users/mark/AndroidStudioProjects/CS736BatteryDrain/app/src/main/res/values/strings.xml -->
     <eat-comment/>
     <string-array name="tests">
-        <item>Full throttle + full permissions</item>
-        <item>Full throttle + no permissions</item>
-        <item>No detection + full permissions</item>
-        <item>No detection + no permissions</item>
+        <item>Idle (lower bound)</item>
+        <item>Real world workload</item>
+        <item>Real world workload + Alarm</item>
+        <item>Real world workload + Wakelock</item>
+        <item>Real world workload + Malicious workload + Alarm/Wakelock</item>
+        <item>Full throttle (upper bound)</item>
     </string-array>
     <!-- From: file:/Users/mark/AndroidStudioProjects/CS736BatteryDrain/app/build/intermediates/exploded-aar/com.android.support/appcompat-v7/22.0.0/res/values/values.xml -->
     <eat-comment/>

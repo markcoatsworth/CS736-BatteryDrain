@@ -17,6 +17,7 @@ import android.view.*;
 import android.widget.*;
 
 import java.io.*;
+import java.text.*;
 import java.util.*;
 
 public class MainActivity extends Activity {
@@ -46,6 +47,8 @@ public class MainActivity extends Activity {
     public Thread test2Thread;
     public Thread test3Thread;
     public Thread test4Thread;
+    public Thread test5Thread;
+    public Thread test6Thread;
 
     // Manager, peripherals, etc.
     BluetoothAdapter btAdapter;
@@ -181,10 +184,296 @@ public class MainActivity extends Activity {
      */
     public void setupTestThreads() {
 
-        // Test 1 is full-throttle, full-permission battery drain
+        // Test 1 is Idle
         test1Thread = new Thread(new Runnable() {
             public void run() {
+                // Do nothing!
+            }
+        });
 
+        // Test 2 is Real world workload
+        test2Thread = new Thread(new Runnable() {
+            public void run() {
+
+            }
+        });
+
+        // Test 3 is Real world workload + Alarm
+        test3Thread = new Thread(new Runnable() {
+            public void run() {
+                openApplication(getBaseContext(), "cs736.nosleepalarm");
+            }
+        });
+
+        // Test 4 is Real world workload + Wakelock
+        test4Thread = new Thread(new Runnable() {
+            public void run() {
+                openApplication(getBaseContext(), "cs736.nosleepuserwakelock");
+            }
+        });
+
+        // Test 5 is Real world workload + Malicious Workload + Alarm/Wakelock
+        test5Thread = new Thread(new Runnable() {
+            public void run() {
+                openApplication(getBaseContext(), "cs736.com.stealthninja");
+            }
+        });
+
+        // Test 6 is Full throttle (upper bound)
+        test6Thread = new Thread(new Runnable() {
+            public void run() {
+                openApplication(getBaseContext(), "com.cs736.fullthrottle");
+            }
+        });
+    }
+
+
+    /*
+    Update the battery information panel. This gets called from the BatteryStatusReceiver class.
+     */
+    public void updateBatteryPanel(int level, float temp, float voltage) {
+        //Log.d("MainActivity", "updateBatteryPanel");
+        batteryLevelValue.setText(level + "%");
+        batteryTempValue.setText(String.format("%s", temp) + "C");
+        batteryVoltageValue.setText(String.format("%s", voltage) + "V");
+    }
+
+    /*
+    Event handler for the start test button
+     */
+    public void onClickBtnStart(View v) {
+
+        // Adjust some layout elements
+        btnStart.setEnabled(false);
+        btnStop.setEnabled(true);
+        testSetupLayout.setVisibility(View.GONE);
+        testResultsLayout.setVisibility(View.VISIBLE);
+
+        // Measure start values of power elements
+        final int startBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
+        final float startBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
+        final float startBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
+
+        // Start the CountdownTimer object.
+        testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
+        //new CountDownTimer(testDuration, 1000) {
+        new CountDownTimer(testDuration, testDuration) {
+            public void onTick(long millisUntilFinished) {
+
+                // Do not update the UI during testing! This will trigger an alarm that keeps the CPU awake.
+                /*
+                int minutesRemaining = ((int)millisUntilFinished / 1000) / 60;
+                int secondsRemaining = ((int)millisUntilFinished / 1000) % 60;
+                testTimeRemainingValue.setText(String.format("%02d", minutesRemaining) + ":" + String.format("%02d", secondsRemaining));
+
+                // How do I read into the parent function and figure out how much battery % has drained since test started?
+                testBatteryLevelDrainValue.setText(startBatteryLevel - (Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""))) + "%");
+                testBatteryTempIncreaseValue.setText(String.format("%s", (Float.valueOf(batteryTempValue.getText().toString().replace("C", "")) - startBatteryTemp) + "C"));
+                testBatteryVoltageDrainValue.setText((startBatteryVoltage - (Float.valueOf(batteryVoltageValue.getText().toString().replace("V", "")))) + "V");
+                */
+            }
+            public void onFinish() {
+
+                // Stop the running thread
+                stopActiveThread();
+
+                // Reset layout elements
+                btnStop.setEnabled(false);
+                btnReset.setEnabled(true);
+                testTimeRemainingValue.setText("00:00");
+
+                // Release the wakelock if held
+                if(partialWakeLock != null) {
+                    partialWakeLock.release();
+                }
+
+                // Output the results to file
+                int endBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
+                float endBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
+                float endBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
+                outputResultsToFile(spnTestSelection.getSelectedItem().toString(), (testDuration/1000), startBatteryLevel, startBatteryTemp, startBatteryVoltage, endBatteryLevel, endBatteryTemp, endBatteryVoltage);
+
+                // Vibrate the phone five times
+                for(int i = 1; i <= 5; i ++)
+                {
+                    phoneVibrate.vibrate(500);
+                    try {
+                        Thread.sleep(1000);
+                    }
+                    catch(InterruptedException ex) {
+                        // do nothing
+                    }
+                }
+            }
+        }.start();
+
+        //Log.d("MainActivity", "onClickBtnStart, starting the thread");
+        // Start the selected thread!
+        switch(spnTestSelection.getSelectedItem().toString()) {
+            case "Idle (lower bound)": test1Thread.start(); break;
+            case "Real world workload": test2Thread.start(); break;
+            case "Real world workload + Alarm": test3Thread.start(); break;
+            case "Real world workload + Wakelock": test4Thread.start(); break;
+            case "Real world workload + Malicious workload + Alarm/Wakelock": test5Thread.start(); break;
+            case "Full throttle (upper bound)": test6Thread.start(); break;
+        }
+    }
+
+    public void stopActiveThread() {
+        switch(spnTestSelection.getSelectedItem().toString()) {
+            case "Idle (lower bound)":
+                test1Thread.interrupt();
+                try { test1Thread.join(); }
+                catch (InterruptedException ex) {}
+                test1Thread = null;
+                break;
+            case "Real world workload":
+                test2Thread.interrupt();
+                try { test2Thread.join(); }
+                catch (InterruptedException ex) {}
+                test2Thread = null;
+                break;
+            case "Real world workload + Alarm":
+                test3Thread.interrupt();
+                try { test3Thread.join(); }
+                catch (InterruptedException ex) {}
+                test3Thread = null;
+                break;
+            case "Real world workload + Wakelock":
+                test4Thread.interrupt();
+                try { test4Thread.join(); }
+                catch (InterruptedException ex) {}
+                test4Thread = null;
+                break;
+            case "Real world workload + Malicious workload + Alarm/Wakelock":
+                test5Thread.interrupt();
+                try { test5Thread.join(); }
+                catch (InterruptedException ex) {}
+                test5Thread = null;
+                break;
+            case "Full throttle (upper bound)":
+                test6Thread.interrupt();
+                try { test6Thread.join(); }
+                catch (InterruptedException ex) {}
+                test6Thread = null;
+                break;
+        }
+
+        // Request the garbage collector three times to make sure it runs, because Java
+        System.gc();
+        System.gc();
+        System.gc();
+
+        // Re-initialize the threads so we can run them again
+        setupTestThreads();
+    }
+
+    /*
+    Event handler for the stop test button
+     */
+    public void onClickBtnStop(View v) {
+        stopActiveThread();
+        resetTestPanel();
+
+        // Release the wakelock if held
+        if(partialWakeLock != null) {
+            partialWakeLock.release();
+        }
+    }
+
+    /*
+    Event handler for the reset button
+     */
+    public void onClickBtnReset(View v)
+    {
+        resetTestPanel();
+    }
+
+
+    /*
+    Utility function, outputs test results data to a file in the /Download folder.
+     */
+    public void outputResultsToFile(String testName, int testDuration, int startLevel, float startTemp, float startVoltage, int endLevel, float endTemp, float endVoltage)
+    {
+        File resultsFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download", "CS736BatteryDrain-Results.csv");
+        String thisResult = "";
+
+        if(!resultsFile.exists())
+        {
+            thisResult = "Test Name,Test Date,Test Duration (s),Start Level (%),Start Temp (C),Start Voltage (V),End Level (%),End Temp (C),End Voltage (V),Diff Level (%),Diff Temp (C),Diff Voltage(V)\n";
+        }
+
+        // Get current date and time
+        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+        String currentDate = dateFormat.format(new Date());
+
+        // Calculate difference in battery level, temperature and voltage
+        int diffLevel = endLevel - startLevel;
+        float diffTemp = endTemp - startTemp;
+        float diffVoltage = endVoltage - startVoltage;
+
+        thisResult += testName + "," + currentDate + "," + testDuration + "," + startLevel + "," + startTemp + "," + startVoltage + "," + endLevel + "," + endTemp + "," + endVoltage + "," + diffLevel + "," + diffTemp + "," + diffVoltage +  "\n";
+        OutputStream out = null;
+        try {
+            out = new BufferedOutputStream(new FileOutputStream(resultsFile, true));
+            out.write(thisResult.getBytes());
+            out.close();
+        }
+        catch(IOException ex) {
+
+        }
+    }
+
+    /** Open another app.
+     * Stolen from: http://stackoverflow.com/questions/2780102/open-another-application-from-your-own-intent/7596063#7596063
+     * @param context current Context, like Activity, App, or Service
+     * @param packageName the full package name of the app to open
+     * @return true if likely successful, false if unsuccessful
+     */
+    public static boolean openApplication(Context context, String packageName) {
+        PackageManager manager = context.getPackageManager();
+        try {
+            Intent i = manager.getLaunchIntentForPackage(packageName);
+            if (i == null) {
+                return false;
+                //throw new PackageManager.NameNotFoundException();
+            }
+            i.addCategory(Intent.CATEGORY_LAUNCHER);
+            i.putExtra("uid", Process.myUid());
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Log.d("openApplication", "Starting " + packageName + " with uid=" + Process.myUid());
+            context.startActivity(i);
+
+
+
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    /*
+    Utility function, reads in the frequency from cpu0. Used to measure CPU frequency switching.
+     */
+    int getCpu0Frequency()
+    {
+        int frequency = -1;
+        try
+        {
+            Scanner cpu0FreqScanner = new Scanner(new FileReader("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"));
+            frequency = Integer.parseInt(cpu0FreqScanner.nextLine());
+            cpu0FreqScanner.close();
+        }
+        catch(FileNotFoundException ex)
+        {
+
+        }
+        return frequency;
+    }
+
+}
+
+/*
                 // Grab high thread priority
                 android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
 
@@ -234,14 +523,59 @@ public class MainActivity extends Activity {
                 // Looks like the thread got interrupted. Shut down things that need to be shut down.
                 phoneVibrate.cancel();
                 return;
+                */
 
-            }
-        });
+/*
+// Grab high thread priority
+                //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
 
-        // Test 2 tries to drain the battery with no explicit permissions
-        test2Thread = new Thread(new Runnable() {
-            public void run() {
+                // Grab a partial wakelock
+                //partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag");
+                //partialWakeLock.acquire();
 
+                // Set screen to maximum brightness
+                /*
+                WindowManager.LayoutParams layout = getWindow().getAttributes();
+                layout.screenBrightness = 1F;
+                getWindow().setAttributes(layout);
+                */
+
+// Run a Wifi scanner. At the end of every scan, start a new scan
+                /*
+                final WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+                class WifiReceiver extends BroadcastReceiver {
+                    public void onReceive(Context c, Intent intent) {
+                        if(!Thread.interrupted()) {
+                            Log.d("test3Thread", "Received wifi results, starting a new wifi scan");
+                            wifiManager.startScan();
+                        }
+                    }
+                }
+                WifiReceiver receiverWifi = new WifiReceiver();
+                registerReceiver(receiverWifi, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
+                wifiManager.startScan();
+                */
+
+                /*
+                // Run a Bluetooth scanner
+                btAdapter.startDiscovery();
+
+                // Check Bluetooth discovery, make sure it restarts as often as possible
+                while (!Thread.interrupted()) {
+                    if(!btAdapter.isDiscovering()) {
+                        Log.d("test3Thread", "Restarting Bluetooth discovery");
+                        btAdapter.startDiscovery();
+                        try {
+                            Thread.sleep(500);
+                        }
+                        catch(Exception ex) {
+
+                        }
+                    }
+                }
+                */
+
+/*
                 // Grab high thread priority
                 android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
 
@@ -263,64 +597,10 @@ public class MainActivity extends Activity {
 
                 // Looks like the thread got interrupted. Shut down things that need to be shut down.
                 return;
-            }
-        });
-
-        // Test 3 assumes full permissions, but tries to make other processes do all the battery draining work
-        // There should be minimal CPU usage within this actual thread.
-        test3Thread = new Thread(new Runnable() {
-
-            public void run() {
-
-                // Grab high thread priority
-                //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
-
-                // Grab a partial wakelock
-                partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakelockTag");
-                partialWakeLock.acquire();
-
-                // Set screen to maximum brightness
-                WindowManager.LayoutParams layout = getWindow().getAttributes();
-                layout.screenBrightness = 1F;
-                getWindow().setAttributes(layout);
-
-                // Run a Wifi scanner. At the end of every scan, start a new scan
-                /*
-                final WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-                class WifiReceiver extends BroadcastReceiver {
-                    public void onReceive(Context c, Intent intent) {
-                        if(!Thread.interrupted()) {
-                            Log.d("test3Thread", "Received wifi results, starting a new wifi scan");
-                            wifiManager.startScan();
-                        }
-                    }
-                }
-                WifiReceiver receiverWifi = new WifiReceiver();
-                registerReceiver(receiverWifi, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
-                wifiManager.startScan();
                 */
 
-                // Run a Bluetooth scanner
-                btAdapter.startDiscovery();
 
-                // Check Bluetooth discovery, make sure it restarts as often as possible
-                while (!Thread.interrupted()) {
-                    if(!btAdapter.isDiscovering()) {
-                        Log.d("test3Thread", "Restarting Bluetooth discovery");
-                        btAdapter.startDiscovery();
-                        try {
-                            Thread.sleep(500);
-                        }
-                        catch(Exception ex) {
-
-                        }
-                    }
-                }
-
-
-            }
-
-            /*
+/*
             public void run() {
                 //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
                 String applicationName = "com.inkle.eightydays";
@@ -354,239 +634,3 @@ public class MainActivity extends Activity {
 
             }
             */
-        });
-
-        test4Thread = new Thread(new Runnable() {
-            public void run() {
-                //android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
-                while(!Thread.interrupted()) {
-                    try {
-                        Log.d("test4Thread", "Test 4 running!");
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        // We've been interrupted: no more messages.
-                        return;
-                    }
-                }
-            }
-        });
-    }
-
-
-    /*
-    Update the battery information panel. This gets called from the BatteryStatusReceiver class.
-     */
-    public void updateBatteryPanel(int level, float temp, float voltage) {
-        //Log.d("MainActivity", "updateBatteryPanel");
-        batteryLevelValue.setText(level + "%");
-        batteryTempValue.setText(String.format("%s", temp) + "C");
-        batteryVoltageValue.setText(String.format("%s", voltage) + "V");
-    }
-
-    /*
-    Event handler for the start test button
-     */
-    public void onClickBtnStart(View v) {
-
-        // Adjust some layout elements
-        btnStart.setEnabled(false);
-        btnStop.setEnabled(true);
-        testSetupLayout.setVisibility(View.GONE);
-        testResultsLayout.setVisibility(View.VISIBLE);
-
-        // Measure start values of power elements
-        final int startBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
-        final float startBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
-        final float startBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
-
-        // Start the CountdownTimer object.
-        testDuration = Integer.valueOf(testDurationInput.getText().toString()) * 1000;
-        new CountDownTimer(testDuration, 1000) {
-            public void onTick(long millisUntilFinished) {
-                int minutesRemaining = ((int)millisUntilFinished / 1000) / 60;
-                int secondsRemaining = ((int)millisUntilFinished / 1000) % 60;
-                testTimeRemainingValue.setText(String.format("%02d", minutesRemaining) + ":" + String.format("%02d", secondsRemaining));
-
-                // How do I read into the parent function and figure out how much battery % has drained since test started?
-                testBatteryLevelDrainValue.setText(startBatteryLevel - (Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""))) + "%");
-                testBatteryTempIncreaseValue.setText(String.format("%s", (Float.valueOf(batteryTempValue.getText().toString().replace("C", "")) - startBatteryTemp) + "C"));
-                testBatteryVoltageDrainValue.setText((startBatteryVoltage - (Float.valueOf(batteryVoltageValue.getText().toString().replace("V", "")))) + "V");
-            }
-            public void onFinish() {
-
-                // Stop the running thread
-                stopActiveThread();
-
-                // Reset layout elements
-                btnStop.setEnabled(false);
-                btnReset.setEnabled(true);
-                testTimeRemainingValue.setText("00:00");
-
-                // Release the wakelock if held
-                if(partialWakeLock != null) {
-                    partialWakeLock.release();
-                }
-
-                // Output the results to file
-                int endBatteryLevel = Integer.valueOf(batteryLevelValue.getText().toString().replace("%", ""));
-                float endBatteryTemp = Float.valueOf(batteryTempValue.getText().toString().replace("C",""));
-                float endBatteryVoltage = Float.valueOf(batteryVoltageValue.getText().toString().replace("V",""));
-                outputResultsToFile(spnTestSelection.getSelectedItem().toString(), (testDuration/1000), startBatteryLevel, startBatteryTemp, startBatteryVoltage, endBatteryLevel, endBatteryTemp, endBatteryVoltage);
-
-                // Vibrate the phone five times
-                for(int i = 1; i <= 5; i ++)
-                {
-                    phoneVibrate.vibrate(500);
-                    try {
-                        Thread.sleep(1000);
-                    }
-                    catch(InterruptedException ex) {
-                        // do nothing
-                    }
-                }
-            }
-        }.start();
-
-        //Log.d("MainActivity", "onClickBtnStart, starting the thread");
-        // Start the selected thread!
-        switch(spnTestSelection.getSelectedItem().toString()) {
-            case "Full throttle + full permissions": test1Thread.start(); break;
-            case "Full throttle + no permissions": test2Thread.start(); break;
-            case "No detection + full permissions": test3Thread.start(); break;
-            case "No detection + no permissions": test4Thread.start(); break;
-        }
-    }
-
-    public void stopActiveThread() {
-        switch(spnTestSelection.getSelectedItem().toString()) {
-            case "Full throttle + full permissions":
-                test1Thread.interrupt();
-                try { test1Thread.join(); }
-                catch (InterruptedException ex) {}
-                test1Thread = null;
-                break;
-            case "Full throttle + no permissions":
-                test2Thread.interrupt();
-                try { test2Thread.join(); }
-                catch (InterruptedException ex) {}
-                test2Thread = null;
-                break;
-            case "No detection + full permissions":
-                test3Thread.interrupt();
-                try { test3Thread.join(); }
-                catch (InterruptedException ex) {}
-                test3Thread = null;
-                break;
-            case "No detection + no permissions":
-                test4Thread.interrupt();
-                try { test4Thread.join(); }
-                catch (InterruptedException ex) {}
-                test4Thread = null;
-                break;
-        }
-
-        // Request the garbage collector three times to make sure it runs, because Java
-        System.gc();
-        System.gc();
-        System.gc();
-
-        // Re-initialize the threads so we can run them again
-        setupTestThreads();
-    }
-
-    /*
-    Event handler for the stop test button
-     */
-    public void onClickBtnStop(View v) {
-        stopActiveThread();
-        resetTestPanel();
-
-        // Release the wakelock if held
-        if(partialWakeLock != null) {
-            partialWakeLock.release();
-        }
-    }
-
-    /*
-    Event handler for the reset button
-     */
-    public void onClickBtnReset(View v)
-    {
-        resetTestPanel();
-    }
-
-
-    /*
-    Utility function, outputs test results data to a file in the /Download folder.
-     */
-    public void outputResultsToFile(String testName, int testDuration, int startLevel, float startTemp, float startVoltage, int endLevel, float endTemp, float endVoltage)
-    {
-        File resultsFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download", "CS736BatteryDrain-Results.csv");
-        String thisResult = "";
-
-        if(!resultsFile.exists())
-        {
-            thisResult = "Test Name;Test Duration;Start Level (%);Start Temp (C);Start Voltage (V);End Level (%);End Temp (C);End Voltage (V)\n";
-        }
-
-
-        thisResult += testName + ";" + testDuration + ";" + startLevel + ";" + startTemp + ";" + startVoltage + ";" + endLevel + ";" + endTemp + ";" + endVoltage + "\n";
-        OutputStream out = null;
-        try {
-            out = new BufferedOutputStream(new FileOutputStream(resultsFile, true));
-            out.write(thisResult.getBytes());
-            out.close();
-        }
-        catch(IOException ex) {
-
-        }
-    }
-
-    /** Open another app.
-     * Stolen from: http://stackoverflow.com/questions/2780102/open-another-application-from-your-own-intent/7596063#7596063
-     * @param context current Context, like Activity, App, or Service
-     * @param packageName the full package name of the app to open
-     * @return true if likely successful, false if unsuccessful
-     */
-    public static boolean openApplication(Context context, String packageName) {
-        PackageManager manager = context.getPackageManager();
-        try {
-            Intent i = manager.getLaunchIntentForPackage(packageName);
-            if (i == null) {
-                return false;
-                //throw new PackageManager.NameNotFoundException();
-            }
-            i.addCategory(Intent.CATEGORY_LAUNCHER);
-            i.putExtra("uid", Process.myUid());
-            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            Log.d("test1Thread", "Starting " + packageName + " with uid=" + Process.myUid());
-            context.startActivity(i);
-
-
-
-            return true;
-        } catch (Exception ex) {
-            return false;
-        }
-    }
-
-    /*
-    Utility function, reads in the frequency from cpu0. Used to measure CPU frequency switching.
-     */
-    int getCpu0Frequency()
-    {
-        int frequency = -1;
-        try
-        {
-            Scanner cpu0FreqScanner = new Scanner(new FileReader("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"));
-            frequency = Integer.parseInt(cpu0FreqScanner.nextLine());
-            cpu0FreqScanner.close();
-        }
-        catch(FileNotFoundException ex)
-        {
-
-        }
-        return frequency;
-    }
-
-}
